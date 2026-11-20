@@ -5,13 +5,16 @@ stores each as a folder with its source (`.pine`), full description (`.md`) and
 machine-readable metadata (`meta.json`). Everything is driven from the command line —
 no UI, no GUI, no build step.
 
-Current corpus: **99,335 scripts enumerated · 62,478 with source · 36,857 protected
-(manifest only)** · 638 MB of Pine code.
+**Reference corpus used during development:** 99,335 scripts enumerated · 62,478 with
+source · 36,857 protected (manifest only) · 638 MB of Pine code. These numbers describe
+the corpus the tool was built against — they are **not** a target your own run must
+match. Your counts depend on what you choose to download.
 
 This single document is both the **user guide** (below) and the **developer reference**
 (second half). There is no separate `DEV.md` — architectural details, module map, feed
 mechanics, traps and extension recipes all live in the Developer Reference section near
-the end.
+the end. Nothing in this repository is tied to one machine: all paths are relative to the
+repository or configured by you, and no personal paths or credentials are included.
 
 ## Features
 
@@ -27,21 +30,35 @@ the end.
 
 ## Quick start
 
-Copy the whole `indicator downlaoder` folder anywhere and run from `code files\tools`:
+1. Install Python 3.12 and the single third-party dependency:
 
-```powershell
-cd "code files\tools"
-python tv.py status
-python tv.py verify
-```
+   ```powershell
+   pip install -r requirements.txt
+   ```
 
-All commands are run manually with Python. There is no dashboard, launcher, or executable.
+2. Copy/clone the repository anywhere, then change into `code files/tools` and check
+   the setup:
 
-A full scrape from scratch:
+   ```powershell
+   cd "code files/tools"
+   python tv.py status
+   python tv.py verify
+   ```
+
+3. Tell the tool where your corpus should live (see
+   [Configure the data folder](#configure-the-data-folder)), then start a scrape.
+
+All commands are run manually with Python. There is no dashboard, launcher, or
+executable. A full scrape from scratch is:
 
 ```powershell
 python -u ..\harvest\tv_pipeline.py
 ```
+
+On Linux/macOS use forward slashes (`../harvest/tv_pipeline.py`) and `python3` if that
+is how your interpreter is named. The Windows-only pieces are the `.ps1` helpers and
+detached `pythonw` jobs; every collector itself is plain Python and runs in the
+foreground on any OS.
 
 ## CLI reference
 
@@ -66,33 +83,47 @@ python -u ..\harvest\tv_pipeline.py
 
 ## Configure the data folder
 
-Edit `code files\core\config.json`:
+The shipped default is `code files/core/config.json`:
 
 ```json
-{ "output_dir": "..\\..\\..\\trades\\indicators" }
+{ "output_dir": "..\\..\\indicators" }
 ```
 
-The path is relative to that config file. An absolute path also works, as does the
-`TV_DATA_DIR` environment variable (highest precedence). Or just run:
+`..\\..\\indicators` means "an `indicators` folder at the repository root" — a neutral
+default that works on any checkout. The path is resolved relative to the config file, so
+you can change it to anywhere you like; absolute paths work too. The `TV_DATA_DIR`
+environment variable overrides both and has the highest precedence. The easiest option
+is to let the tool write the config for you:
 
 ```powershell
-python tv.py configure "C:\path\to\your\indicators"
+python tv.py configure "<folder where your indicators should live>"
 ```
+
+Use a path that exists (or that you want created) on **your** machine — for example
+`$HOME/indicators` on Linux/macOS or `D:\data\indicators` on Windows. Then run
+`python tv.py status` and confirm the printed data folder is the one you intended.
 
 ## Running long collectors
 
-Long jobs are launched detached with `pythonw.exe` so they survive the shell that
-started them and open no console windows:
+On Windows, long jobs can be launched detached with `pythonw.exe` so they survive the
+shell that started them and open no console windows. Resolve both paths from your own
+environment instead of hardcoding them:
 
 ```powershell
-$pyw = "C:\Users\cattu\AppData\Local\Programs\Python\Python312\pythonw.exe"
+$repo = (Get-Location).Path                      # run this from the repository root
+$pyw  = (Get-Command pythonw).Source              # or (Get-Command python).Source
+$script = Join-Path $repo "code files\harvest\tv_expand.py"
 Invoke-CimMethod -ClassName Win32_Process -MethodName Create -Arguments @{
-  CommandLine = "`"$pyw`" -u `"C:\path\to\indicator downlaoder\code files\harvest\tv_expand.py`" type"
+  CommandLine = "`"$pyw`" -u `"$script`" type"
 }
 ```
 
-Progress goes to `code files\logs\*.log`. Pause/resume with `python tv.py pause` /
-`resume` (uses Win32 `NtSuspendProcess` / `NtResumeProcess`).
+If `pythonw` is not on your PATH, point `(Get-Command pythonw)` at your interpreter's
+`pythonw.exe` — the name and location differ between installations. Progress goes to
+`code files\logs\*.log`. Pause/resume with `python tv.py pause` / `resume` (uses Win32
+`NtSuspendProcess` / `NtResumeProcess`). On other operating systems, simply run the
+collector in a terminal you keep open (or under your own process manager such as
+`nohup`/`systemd`), since the `.ps1` helpers are Windows-specific.
 
 ## Status, progress and logs
 
@@ -169,8 +200,9 @@ From a fresh clone, with all commands run from `code files\tools`:
 7. **Search.** `python tv.py index "<query>"` searches names, authors and full
    descriptions.
 8. **QA before calling a change done.** `python tv.py status`, `python tv.py verify`,
-   `python tv.py index "fibonacci"` — all must succeed with 62,478 files and 99,335
-   manifest rows, and with the correct data-folder path.
+   `python tv.py index "fibonacci"` — all must succeed, the counts must match what
+   **your** corpus should contain at that point, and the data-folder path printed by
+   `status` must be the one you configured.
 9. **Package or archive.** `python tv.py export <name|--prefix P|--all>` writes ZIPs;
    `python tv.py snapshot` commits the catalog state to git.
 
@@ -196,13 +228,13 @@ indicator downlaoder/
 ## Data layout
 
 ```
-trades/indicators/
+<your data folder>/            (default: indicators/ at the repository root)
 ├── <Name> [TVid]/
 │   ├── <Name> [TVid].pine     Pine source
 │   ├── <Name> [TVid].md       metadata + full description
 │   └── meta.json              author, type, tags, hash, inputs, description
 ├── catalog.md                 every script, author, version, link
-├── _manifest.csv / .jsonl     all 99,335 scripts
+├── _manifest.csv / .jsonl     every script you have enumerated
 ├── library.sqlite             FTS5 search index
 ├── _work/                     resumable scrape cache (safe to delete, costly to rebuild)
 └── README.md
@@ -214,9 +246,13 @@ the plaintext never reaches the client.
 
 ## Requirements
 
-- Python 3.12 (tested). `requests` for the description scraper.
-- Windows for the `.ps1` process helpers and detached `pythonw` jobs. The Python
-  modules themselves use only relative paths.
+- Python 3.12 (tested). Install the single dependency with
+  `pip install -r requirements.txt` (`requests`, used by the description scraper).
+- Windows for the `.ps1` process helpers and detached `pythonw` jobs. Every Python
+  module itself is platform-independent and uses only relative paths, so collectors can
+  be run in the foreground on Linux/macOS too.
+- No account, API key, or personal configuration is required to fetch open-source
+  scripts.
 
 ## Note
 
@@ -237,7 +273,7 @@ recipes.
 
 ```
 indicator downlaoder/
-├── README.md, HANDOFF.md
+├── README.md, HANDOFF.md, requirements.txt, .gitignore
 └── code files/
     ├── bootstrap.py               puts every subfolder on sys.path
     ├── core/        tv_config.py, config.json, tv_lib.py, tv_rate.py
@@ -247,14 +283,14 @@ indicator downlaoder/
     │                tv_export, tv_verify, tv_verify_desc, tv_snapshot
     ├── tools/       tv.py (CLI), tv_watchdog.py, tv_pause.ps1
     └── logs/        collector logs
-trades/indicators/                  the DATA — 62,478 script folders
+<your data folder>/                 the DATA (default: indicators/ at the repo root)
 ```
 
 The tool never writes into the data folder except through explicit commands, and the
 data folder contains no code. The two trees are deliberately separate: `code files/`
-holds all logic and configuration, `trades/indicators/` holds only generated data. That
-is why the whole tool can be copied anywhere and repointed at a different corpus simply
-by changing `config.json`.
+holds all logic and configuration, your data folder holds only generated data. That is
+why the whole tool can be copied anywhere and repointed at a different corpus simply by
+changing `config.json` or setting `TV_DATA_DIR`.
 
 **Imports.** Each script begins with three lines that put the `code files` root on
 `sys.path` and import `bootstrap`, which then adds every subfolder (`core`, `harvest`,
@@ -271,11 +307,11 @@ env TV_DATA_DIR → config.json["output_dir"] → sibling folder "indicators"
 ```
 
 Resolution order is strictly top-down: the `TV_DATA_DIR` environment variable wins, then
-the `output_dir` value in `config.json`, then a fallback sibling folder named
-`indicators`. When `output_dir` comes from `config.json`, it is resolved **relative to
-the config file's own folder**, not the current working directory. So
-`"..\\..\\..\\trades\\indicators"` in `code files\core\config.json` walks up three
-levels to the project root and into `trades\indicators`. An absolute path is also accepted.
+the `output_dir` value in `config.json`, then a fallback folder named `indicators`
+beside `code files`. When `output_dir` comes from `config.json`, it is resolved
+**relative to the config file's own folder**, not the current working directory. The
+shipped default `"..\\..\\indicators"` in `code files\core\config.json` walks up two
+levels to the repository root and into `indicators`. An absolute path is also accepted.
 
 `OUT` is the single source of truth for every data path. Everything else is derived
 from it, so changing one value redirects the entire tool:
@@ -480,14 +516,20 @@ defaults (6 workers, 150 ms spacing, adaptive backoff) exist to prevent this.
 ## D9. Running long jobs manually
 
 Never launch a long job from a shell that will exit — the child dies silently with it.
-Launch it detached with WMI so it survives:
+On Windows, launch it detached with WMI so it survives; derive the interpreter and
+script paths from your own environment:
 
 ```powershell
-$pyw = "C:\Users\cattu\AppData\Local\Programs\Python\Python312\pythonw.exe"
+$repo = (Get-Location).Path
+$pyw  = (Get-Command pythonw).Source
+$script = Join-Path $repo "code files\harvest\tv_expand.py"
 Invoke-CimMethod -ClassName Win32_Process -MethodName Create -Arguments @{
-  CommandLine = "`"$pyw`" -u `"C:\...\code files\harvest\tv_expand.py`" type"
+  CommandLine = "`"$pyw`" -u `"$script`" type"
 }
 ```
+
+On Linux/macOS there is no `pythonw`; run the collector under your own process manager
+(`nohup`, `tmux`, `systemd`, …) and tail its log instead.
 
 `pythonw` has no console, so the script must open its own log file and reassign
 `sys.stdout` / `sys.stderr` itself. A `> file 2>&1` redirection inside a WMI command line
@@ -566,14 +608,15 @@ needs to change because every path derives from `OUT`.
 Before reporting a change as done, run all three checks:
 
 ```powershell
-$py = "C:\Users\cattu\AppData\Local\Programs\Python\Python312\python.exe"
-cd "code files\tools"
-& $py tv.py status
-& $py tv.py verify
-& $py tv.py index "fibonacci"
+cd "code files/tools"
+python tv.py status
+python tv.py verify
+python tv.py index "fibonacci"
 ```
 
-All must succeed **and** report the expected counts: **62,478 files** and **99,335
-manifest rows**. Check the data-folder path printed by `status` — a wrong `config.json`
-is the most common reason a "successful" run actually verified zero files.
+All must succeed, the reported counts must match what **your** corpus should contain,
+and the data-folder path printed by `status` must be correct. A wrong config is the most
+common reason a "successful" run actually verified zero files. The development corpus
+(62,478 source files / 99,335 manifest rows) is a useful sanity reference, not a required
+result.
 
