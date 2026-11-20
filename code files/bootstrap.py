@@ -1,5 +1,6 @@
 import os
 import sys
+sys.dont_write_bytecode = True  # never create __pycache__ / .pyc files
 
 ROOT = os.path.dirname(os.path.abspath(__file__))
 for _name in os.listdir(ROOT):

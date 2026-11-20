@@ -1,14 +1,28 @@
-# Python bytecode and caches
+# Python bytecode — disabled at runtime by -B / sys.dont_write_bytecode;
+# these patterns are a safety net for any run started without them.
 __pycache__/
 *.py[cod]
-*.egg-info/
+
+# Virtual environments and tool caches
+.venv/
+venv/
+env/
 .pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.tox/
+.coverage
+htmlcov/
+build/
+dist/
+*.egg-info/
 
 # Runtime logs (collectors write their own logs here)
 code files/logs/
 *.log
 
 # Generated corpus, caches and indexes — never commit data
+indicators/
 trades/
 _work/
 *.sqlite
@@ -16,7 +30,9 @@ _work/
 *.sqlite-wal
 *.tmp
 
-# OS metadata
+# Editors and OS metadata
+.idea/
+.vscode/
 .DS_Store
 Thumbs.db
 Desktop.ini

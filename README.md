@@ -49,7 +49,9 @@ repository or configured by you, and no personal paths or credentials are includ
    [Configure the data folder](#configure-the-data-folder)), then start a scrape.
 
 All commands are run manually with Python. There is no dashboard, launcher, or
-executable. A full scrape from scratch is:
+executable. Python bytecode caches are disabled in this repository (`-B` in the launch
+commands and `sys.dont_write_bytecode` at startup), so no `__pycache__` folders or `.pyc`
+files are created while running it. A full scrape from scratch is:
 
 ```powershell
 python -u ..\harvest\tv_pipeline.py
@@ -114,7 +116,7 @@ $repo = (Get-Location).Path                      # run this from the repository 
 $pyw  = (Get-Command pythonw).Source              # or (Get-Command python).Source
 $script = Join-Path $repo "code files\harvest\tv_expand.py"
 Invoke-CimMethod -ClassName Win32_Process -MethodName Create -Arguments @{
-  CommandLine = "`"$pyw`" -u `"$script`" type"
+  CommandLine = "`"$pyw`" -B -u `"$script`" type"
 }
 ```
 
@@ -211,7 +213,6 @@ From a fresh clone, with all commands run from `code files\tools`:
 ```
 indicator downlaoder/
 ├── README.md                  this file (user guide + developer reference)
-├── HANDOFF.md                 historical record of how the corpus was built
 └── code files/
     ├── bootstrap.py           makes every subfolder importable
     ├── core/                  tv_config.py, config.json, tv_lib.py, tv_rate.py
@@ -264,16 +265,15 @@ responsibly.
 
 # Developer Reference
 
-Read this before modifying anything. It describes the code that exists now. `HANDOFF.md`
-is the historical record of how the corpus was built. The sections below go deeper than
-the user guide above: exact paths, URL shapes, field semantics, traps, and extension
-recipes.
+Read this before modifying anything. It describes the code that exists now. The sections
+below go deeper than the user guide above: exact paths, URL shapes, field semantics,
+traps, and extension recipes.
 
 ## D1. Layout
 
 ```
 indicator downlaoder/
-├── README.md, HANDOFF.md, requirements.txt, .gitignore
+├── README.md, requirements.txt, .gitignore
 └── code files/
     ├── bootstrap.py               puts every subfolder on sys.path
     ├── core/        tv_config.py, config.json, tv_lib.py, tv_rate.py
@@ -524,7 +524,7 @@ $repo = (Get-Location).Path
 $pyw  = (Get-Command pythonw).Source
 $script = Join-Path $repo "code files\harvest\tv_expand.py"
 Invoke-CimMethod -ClassName Win32_Process -MethodName Create -Arguments @{
-  CommandLine = "`"$pyw`" -u `"$script`" type"
+  CommandLine = "`"$pyw`" -B -u `"$script`" type"
 }
 ```
 

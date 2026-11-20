@@ -1,4 +1,5 @@
 import os as _os, sys as _sys
+_sys.dont_write_bytecode = True  # never create __pycache__ / .pyc files
 _sys.path.insert(0, _os.path.dirname(_os.path.dirname(_os.path.abspath(__file__))))
 import bootstrap
 import json, os, random, re, sys
