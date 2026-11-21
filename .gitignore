@@ -21,6 +21,9 @@ dist/
 code files/logs/
 *.log
 
+# Generated TUI screenshots (smoke_test.py proof artifacts)
+code files/tui/_screens/
+
 # Generated corpus, caches and indexes — never commit data
 indicators/
 trades/

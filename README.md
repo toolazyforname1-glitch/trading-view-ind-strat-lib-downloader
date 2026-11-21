@@ -2,8 +2,8 @@
 
 A portable Python toolkit that downloads TradingView's **open-source Pine Scripts** and
 stores each as a folder with its source (`.pine`), full description (`.md`) and
-machine-readable metadata (`meta.json`). Everything is driven from the command line —
-no UI, no GUI, no build step.
+machine-readable metadata (`meta.json`). Everything is driven from the command line or
+from the bundled **terminal dashboard** — no browser, no build step.
 
 **Reference corpus used during development:** 99,335 scripts enumerated · 62,478 with
 source · 36,857 protected (manifest only) · 638 MB of Pine code. These numbers describe
@@ -27,10 +27,13 @@ repository or configured by you, and no personal paths or credentials are includ
 - Enrichment: facade metadata, versions, preview images, comments, localized
   descriptions, import graphs, input parameters and SHA-256 hashes.
 - Configuration via one JSON file or an environment variable; no absolute paths in code.
+- Live terminal dashboard (`Pine Harvester TUI.bat`): status cards, smoothed progress,
+  streaming logs, a job queue, FTS search, job history, data-folder reconfiguration and
+  guarded cleanup. Code-level guide: `code files/tui/TUI.md`.
 
 ## Quick start
 
-1. Install Python 3.12 and the single third-party dependency:
+1. Install Python 3.12 and the dependencies:
 
    ```powershell
    pip install -r requirements.txt
@@ -48,19 +51,61 @@ repository or configured by you, and no personal paths or credentials are includ
 3. Tell the tool where your corpus should live (see
    [Configure the data folder](#configure-the-data-folder)), then start a scrape.
 
-All commands are run manually with Python. There is no dashboard, launcher, or
-executable. Python bytecode caches are disabled in this repository (`-B` in the launch
-commands and `sys.dont_write_bytecode` at startup), so no `__pycache__` folders or `.pyc`
-files are created while running it. A full scrape from scratch is:
+4. Optional: launch the terminal dashboard with `Pine Harvester TUI.bat` from the
+   repository root, or `python "code files/tui/harvester_tui.py"`.
+
+All commands are run manually with Python; the TUI is an optional control surface.
+Python bytecode caches are disabled in this repository (`-B` in the launch commands and
+`sys.dont_write_bytecode` at startup), so no `__pycache__` folders or `.pyc` files are
+created while running it. A full scrape from scratch is:
 
 ```powershell
 python -u ..\harvest\tv_pipeline.py
 ```
 
 On Linux/macOS use forward slashes (`../harvest/tv_pipeline.py`) and `python3` if that
-is how your interpreter is named. The Windows-only pieces are the `.ps1` helpers and
-detached `pythonw` jobs; every collector itself is plain Python and runs in the
-foreground on any OS.
+is how your interpreter is named. The Windows-only pieces are the `.ps1` helpers, the
+`.bat` launcher and detached `pythonw` jobs; every collector itself is plain Python and
+runs in the foreground on any OS.
+
+## Terminal dashboard (TUI)
+
+The repository ships a live Textual dashboard. Launch it from the repository root:
+
+```powershell
+.\Pine Harvester TUI.bat
+```
+
+or directly:
+
+```powershell
+python "code files/tui/harvester_tui.py"
+```
+
+The `.bat` finds a Python with Textual (`TV_TUI_PYTHON`, `.venv`, a sibling
+`tools\py-tui`, or `python` on PATH) and explains what to install if it cannot.
+
+It uses the same `tv_config` as the CLI, so both always point at the same data folder.
+Highlights:
+
+- Four KPI cards (enumerated, downloaded, protected, index size) with animated values;
+  click one for a details sheet.
+- Job panel with smoothed progress, rate, percentage, ETA, finish time and counters.
+- Streaming, colour-coded activity log with a `/` filter and `Y` copy.
+- Queue up to 8 jobs; the next starts automatically when the current one exits.
+- Command palette (`^p`), FTS search (`f`), job history (`j`), and **Maintenance**
+  (`D`) for clearing logs, cache, index, manifests or downloaded source — behind a
+  typed `CLEAR`/`DELETE` confirmation and path guards.
+- Calm mode (`t`) disables motion; `g` switches to ASCII glyphs.
+
+Core keys: `s` sync · `e` expand · `c` descriptions · `m` enrich · `a` analyze ·
+`i` index · `v` verify · `f` find · `^p` commands · `D` cleanup · `j` history ·
+`p`/`u` pause/resume detached workers · `x` stop · `X` stop all · `t` calm ·
+`g` ASCII · `?` help · `q` quit.
+
+The code-level guide — architecture, job engine, motion, modals, cleanup guards and
+extension recipes — is in
+[`code files/tui/TUI.md`](code%20files/tui/TUI.md).
 
 ## CLI reference
 
@@ -213,6 +258,9 @@ From a fresh clone, with all commands run from `code files\tools`:
 ```
 indicator downlaoder/
 ├── README.md                  this file (user guide + developer reference)
+├── Pine Harvester TUI.bat     launches the terminal dashboard
+├── requirements.txt           requests + textual
+├── .gitignore
 └── code files/
     ├── bootstrap.py           makes every subfolder importable
     ├── core/                  tv_config.py, config.json, tv_lib.py, tv_rate.py
@@ -223,6 +271,7 @@ indicator downlaoder/
     │                          tv_index, tv_export, tv_verify,
     │                          tv_verify_desc, tv_snapshot
     ├── tools/                 tv.py (CLI), tv_watchdog.py, tv_pause.ps1
+    ├── tui/                   Textual dashboard (see code files/tui/TUI.md)
     └── logs/                  collector logs
 ```
 
@@ -247,11 +296,11 @@ the plaintext never reaches the client.
 
 ## Requirements
 
-- Python 3.12 (tested). Install the single dependency with
-  `pip install -r requirements.txt` (`requests`, used by the description scraper).
-- Windows for the `.ps1` process helpers and detached `pythonw` jobs. Every Python
-  module itself is platform-independent and uses only relative paths, so collectors can
-  be run in the foreground on Linux/macOS too.
+- Python 3.12 (tested). Install dependencies with `pip install -r requirements.txt`
+  (`requests` for the description scraper, `textual` for the dashboard).
+- Windows for the `.ps1` process helpers, the `.bat` launcher and detached `pythonw`
+  jobs. Every Python module itself is platform-independent and uses only relative paths,
+  so collectors can be run in the foreground on Linux/macOS too.
 - No account, API key, or personal configuration is required to fetch open-source
   scripts.
 
@@ -274,6 +323,7 @@ traps, and extension recipes.
 ```
 indicator downlaoder/
 ├── README.md, requirements.txt, .gitignore
+├── Pine Harvester TUI.bat       launches code files/tui
 └── code files/
     ├── bootstrap.py               puts every subfolder on sys.path
     ├── core/        tv_config.py, config.json, tv_lib.py, tv_rate.py
@@ -282,6 +332,7 @@ indicator downlaoder/
     ├── organize/    tv_restructure, tv_md_refresh, tv_analyze, tv_index,
     │                tv_export, tv_verify, tv_verify_desc, tv_snapshot
     ├── tools/       tv.py (CLI), tv_watchdog.py, tv_pause.ps1
+    ├── tui/         Textual dashboard (see tui/TUI.md)
     └── logs/        collector logs
 <your data folder>/                 the DATA (default: indicators/ at the repo root)
 ```
@@ -385,6 +436,7 @@ long jobs. A collector can be killed and restarted without redoing completed wor
 | `tv.py` | CLI dispatcher | adding a command |
 | `tv_watchdog.py` | waits for worker exit | changing watchdog behaviour |
 | `tv_pause.ps1` | suspend/resume detached workers | changing process control |
+| `code files/tui/` | terminal dashboard: app, screens, widgets, motion, theme, job engine, sync and cleanup | see `code files/tui/TUI.md` |
 
 A few relationships worth noting:
 
@@ -619,6 +671,17 @@ and the data-folder path printed by `status` must be correct. A wrong config is 
 common reason a "successful" run actually verified zero files. The development corpus
 (62,478 source files / 99,335 manifest rows) is a useful sanity reference, not a required
 result.
+
+Optional TUI verification:
+
+```powershell
+python "code files/tui/smoke_test.py"
+```
+
+It renders 80×24, 120×40 and 160×50, writes screenshots to
+`code files/tui/_screens/` (gitignored) and exercises the job queue, stop/advance,
+search, history, log filter, configure, maintenance, typed confirmation, calm and ASCII
+modes. It never deletes data.
 
 ## Support
 

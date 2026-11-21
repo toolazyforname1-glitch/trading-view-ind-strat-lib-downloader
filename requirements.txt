@@ -1,3 +1,6 @@
 # TradingView Pine Harvester runtime dependencies
 # Python 3.12 tested
 requests>=2.28
+
+# Terminal dashboard (Pine Harvester TUI.bat)
+textual>=8.2
